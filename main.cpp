@@ -241,13 +241,14 @@ int main() {
 
     // initialize pid steer
     PID pid_steer;
-    pid_steer.Init(0.1, 0.001, 1.0, 1.0, -1.0);
+    pid_steer.Init(0.29,0.0011,0.79,1.2,-1.2);
 
     // initialize pid throttle
     PID pid_throttle;
-    pid_throttle.Init(0.2, 0.002, 2.0, 1.0, -1.0);
+    pid_throttle.Init(0.21,0.001,0.019,1.0,-1.0);
 
     h.onMessage([&pid_steer, &pid_throttle, &new_delta_time, &timer, &prev_timer, &i, &prev_timer](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
+    {
         auto s = hasData(data);
 
         if (s != "") {
@@ -298,63 +299,119 @@ int main() {
             new_delta_time = difftime(timer, prev_timer);
             prev_timer = timer;
 
-            ////////////////////////////////////////
-            // Steering control
-            ////////////////////////////////////////
+          ////////////////////////////////////////
+          // Steering control
+          ////////////////////////////////////////
 
-            // Update the delta time with the previous command
-            pid_steer.UpdateDeltaTime(new_delta_time);
+          /**
+          * TODO (step 3): uncomment these lines
+          **/
+//           // Update the delta time with the previous command
+           pid_steer.UpdateDeltaTime(new_delta_time);
 
-            // Compute steer error
-            double error_steer = computeSteerError(x_position, y_position, yaw, x_points, y_points);
+          // Compute steer error
+          double error_steer;
 
-            // Compute control to apply
-            pid_steer.UpdateError(error_steer);
-            double steer_output = pid_steer.TotalError();
 
-            // Save data
-            file_steer.seekg(std::ios::beg);
-            for (int j = 0; j < i - 1; ++j) {
-                file_steer.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+          double steer_output;
+
+          /**
+          * TODO (step 3): compute the steer error (error_steer) from the position and the desired trajectory
+          **/
+          //Find the closest set of position and trajectory waypoints to use in error calculation, "closest point method"
+          	//Basic find minimum for loop
+          int closest_id = 0;
+          double min_dist = 12303123.0;
+          for(int i = 0; i < x_points.size(); i++){
+            double dist = pow(pow(x_points[i] - x_position,2) + pow(y_points[i]-y_position,2),0.5);
+            if(dist <=  min_dist){
+              min_dist = dist;
+              closest_id = i;
             }
-            file_steer << i;
-            file_steer << " " << error_steer;
-            file_steer << " " << steer_output << endl;
+          }
+          //Based on the closest found position of the ego car, an angle is found from the current position to the closest waypoint
+          int prev_id = 0;
+          if(closest_id > 0){
+            prev_id = closest_id-1;
+         
+          } else if(closest_id == 0) {
+            int temp_id  = closest_id+1;
+            prev_id = closest_id;
+            closest_id = temp_id;
+          }
+          //error_steer = yaw - angle_between_points(x_points[prev_id], y_points[prev_id], x_points[closest_id], y_points[closest_id]);
+          error_steer = yaw - angle_between_points(x_position, y_position, x_points[closest_id], y_points[closest_id]);
+          /**
+          * TODO (step 3): uncomment these lines
+          **/
+//           // Compute control to apply
+           pid_steer.UpdateError(error_steer);
+           steer_output = pid_steer.TotalError();
 
-            ////////////////////////////////////////
-            // Throttle control
-            ////////////////////////////////////////
+//           // Save data
+           file_steer.seekg(std::ios::beg);
+           for(int j=0; j < i - 1; ++j) {
+               file_steer.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+           }
+           file_steer  << i ;
+           file_steer  << " " << error_steer;
+           file_steer  << " " << steer_output << endl;
+          
+           for(int itr = 0; itr < y_points.size(); itr++){
+             std::cout  << " " << y_points[itr] << " ";
+           }
+           std::cout << " SIZE OF X: " << y_points.size() << std::endl;
 
-            // Update the delta time with the previous command
-            pid_throttle.UpdateDeltaTime(new_delta_time);
+          ////////////////////////////////////////
+          // Throttle control
+          ////////////////////////////////////////
 
-            // Compute error of speed
-            double error_throttle = computeThrottleError(velocity, v_points);
+          /**
+          * TODO (step 2): uncomment these lines
+          **/
+//           // Update the delta time with the previous command
+           pid_throttle.UpdateDeltaTime(new_delta_time);
 
-            // Compute control to apply
-            pid_throttle.UpdateError(error_throttle);
-            double throttle = pid_throttle.TotalError();
+          // Compute error of speed
+          double error_throttle;
+          /**
+          * TODO (step 2): compute the throttle error (error_throttle) from the position and the desired speed
+          **/
+          // modify the following line for step 2
+          //error_throttle = v_points.back() - velocity;
+			    //error_throttle = velocity - (std::accumulate(v_points.begin(), v_points.end(), 0.0) / v_points.size());
+          
+          //based on closest x and y waypoint, the corresponding velocity is used for error calculation
+          error_throttle = velocity - (v_points[closest_id]);
 
-            // Adapt the negative throttle to brake
-            double throttle_output;
-            double brake_output;
-            if (throttle > 0.0) {
-                throttle_output = throttle;
-                brake_output = 0;
-            } else {
-                throttle_output = 0;
-                brake_output = -throttle;
-            }
+          double throttle_output;
+          double brake_output;
 
-            // Save data
-            file_throttle.seekg(std::ios::beg);
-            for (int j = 0; j < i - 1; ++j) {
-                file_throttle.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            }
-            file_throttle << i;
-            file_throttle << " " << error_throttle;
-            file_throttle << " " << brake_output;
-            file_throttle << " " << throttle_output << endl;
+          /**
+          * TODO (step 2): uncomment these lines
+          **/
+//           // Compute control to apply
+           pid_throttle.UpdateError(error_throttle);
+           double throttle = pid_throttle.TotalError();
+
+//           // Adapt the negative throttle to break
+           if (throttle > 0.0) {
+             throttle_output = throttle;
+             brake_output = 0;
+           } else {
+             throttle_output = 0;
+             brake_output = -throttle;
+           }
+
+//           // Save data
+           file_throttle.seekg(std::ios::beg);
+           for(int j=0; j < i - 1; ++j){
+               file_throttle.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+           }
+           file_throttle  << i ;
+           file_throttle  << " " << error_throttle;
+           file_throttle  << " " << brake_output;
+           file_throttle  << " " << throttle_output << endl;
 
             // Send control
             json msgJson;

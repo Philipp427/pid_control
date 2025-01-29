@@ -16,6 +16,9 @@ public:
     double p_error;
     double i_error;
     double d_error;
+    double err;
+    double prev_err;
+    double sum_err;
 
     /*
     * Coefficients
