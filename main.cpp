@@ -203,34 +203,6 @@ int main ()
   double new_delta_time;
   int i = 0;
 
-  fstream file_steer;
-  file_steer.open("steer_pid_data.txt", std::ofstream::out | std::ofstream::trunc);
-  file_steer.close();
-  fstream file_throttle;
-  file_throttle.open("throttle_pid_data.txt", std::ofstream::out | std::ofstream::trunc);
-  file_throttle.close();
-
-  time_t prev_timer;
-  time_t timer;
-  time(&prev_timer);
-
-  // initialize pid steer
-  /**
-  * TODO (Step 1): create pid (pid_steer) for steer command and initialize values
-  **/
-
-
-  // initialize pid throttle
-  /**
-  * TODO (Step 1): create pid (pid_throttle) for throttle command and initialize values
-  **/
-
-  PID pid_steer = PID();
-  pid_steer.Init(0.1, 0.001, 0.1, 1.2, -1.2); // Example values, tune these
-
-  PID pid_throttle = PID();
-  pid_throttle.Init(0.2, 0.001, 0.1, 1.0, -1.0); // Example values, tune these
-
     fstream file_steer;
     file_steer.open("steer_pid_data.txt", std::ofstream::out | std::ofstream::trunc);
     file_steer.close();
