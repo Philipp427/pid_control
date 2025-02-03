@@ -9,7 +9,6 @@
 
 class PID {
 public:
-
     /*
     * Errors
     */
@@ -62,7 +61,7 @@ public:
     * Calculate the total PID error.
     */
     double TotalError();
-  
+
     /*
     * Update the delta time.
     */

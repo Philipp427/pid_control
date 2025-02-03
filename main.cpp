@@ -239,206 +239,158 @@ int main() {
     time_t timer;
     time(&prev_timer);
 
-    // initialize pid steer
+    // Initialize PID controllers
     PID pid_steer;
-    pid_steer.Init(0.29,0.0011,0.79,1.2,-1.2);
+    pid_steer.Init(0.29, 0.0011, 0.79, 1.2, -1.2);
 
-    // initialize pid throttle
     PID pid_throttle;
-    pid_throttle.Init(0.21,0.001,0.019,1.0,-1.0);
+    pid_throttle.Init(0.21, 0.001, 0.019, 1.0, -1.0);
 
     h.onMessage([&pid_steer, &pid_throttle, &new_delta_time, &timer, &prev_timer, &i, &prev_timer](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
     {
         auto s = hasData(data);
 
         if (s != "") {
-            auto data = json::parse(s);
+          auto data = json::parse(s);
 
-            // create file to save values
-            fstream file_steer;
-            file_steer.open("steer_pid_data.txt");
-            fstream file_throttle;
-            file_throttle.open("throttle_pid_data.txt");
+          // create file to save values
+          fstream file_steer;
+          file_steer.open("steer_pid_data.txt");
+          fstream file_throttle;
+          file_throttle.open("throttle_pid_data.txt");
 
-            vector<double> x_points = data["traj_x"];
-            vector<double> y_points = data["traj_y"];
-            vector<double> v_points = data["traj_v"];
-            double yaw = data["yaw"];
-            double velocity = data["velocity"];
-            double sim_time = data["time"];
-            double waypoint_x = data["waypoint_x"];
-            double waypoint_y = data["waypoint_y"];
-            double waypoint_t = data["waypoint_t"];
-            bool is_junction = data["waypoint_j"];
-            string tl_state = data["tl_state"];
+          vector<double> x_points = data["traj_x"];
+          vector<double> y_points = data["traj_y"];
+          vector<double> v_points = data["traj_v"];
+          double yaw = data["yaw"];
+          double velocity = data["velocity"];
+          double sim_time = data["time"];
+          double waypoint_x = data["waypoint_x"];
+          double waypoint_y = data["waypoint_y"];
+          double waypoint_t = data["waypoint_t"];
+          bool is_junction = data["waypoint_j"];
+          string tl_state = data["tl_state"];
 
-            double x_position = data["location_x"];
-            double y_position = data["location_y"];
-            double z_position = data["location_z"];
+          double x_position = data["location_x"];
+          double y_position = data["location_y"];
+          double z_position = data["location_z"];
 
-            if (!have_obst) {
-                vector<double> x_obst = data["obst_x"];
-                vector<double> y_obst = data["obst_y"];
-                set_obst(x_obst, y_obst, obstacles, have_obst);
-            }
+          if (!have_obst) {
+              vector<double> x_obst = data["obst_x"];
+              vector<double> y_obst = data["obst_y"];
+              set_obst(x_obst, y_obst, obstacles, have_obst);
+          }
 
-            State goal;
-            goal.location.x = waypoint_x;
-            goal.location.y = waypoint_y;
-            goal.rotation.yaw = waypoint_t;
+          State goal;
+          goal.location.x = waypoint_x;
+          goal.location.y = waypoint_y;
+          goal.rotation.yaw = waypoint_t;
 
-            vector<vector<double>> spirals_x;
-            vector<vector<double>> spirals_y;
-            vector<vector<double>> spirals_v;
-            vector<int> best_spirals;
+          vector<vector<double>> spirals_x;
+          vector<vector<double>> spirals_y;
+          vector<vector<double>> spirals_v;
+          vector<int> best_spirals;
 
-            path_planner(x_points, y_points, v_points, yaw, velocity, goal, is_junction, tl_state, spirals_x, spirals_y, spirals_v, best_spirals);
+          path_planner(x_points, y_points, v_points, yaw, velocity, goal, is_junction, tl_state, spirals_x, spirals_y, spirals_v, best_spirals);
 
-            // Save time and compute delta time
-            time(&timer);
-            new_delta_time = difftime(timer, prev_timer);
-            prev_timer = timer;
+          // Save time and compute delta time
+          time(&timer);
+          new_delta_time = difftime(timer, prev_timer);
+          prev_timer = timer;
 
           ////////////////////////////////////////
           // Steering control
           ////////////////////////////////////////
-
-          /**
-          * TODO (step 3): uncomment these lines
-          **/
-//           // Update the delta time with the previous command
-           pid_steer.UpdateDeltaTime(new_delta_time);
-
-          // Compute steer error
+          pid_steer.UpdateDeltaTime(new_delta_time);
           double error_steer;
-
-
           double steer_output;
 
-          /**
-          * TODO (step 3): compute the steer error (error_steer) from the position and the desired trajectory
-          **/
-          //Find the closest set of position and trajectory waypoints to use in error calculation, "closest point method"
-          	//Basic find minimum for loop
+          // Compute the steer error from the position and the desired trajectory
           int closest_id = 0;
-          double min_dist = 12303123.0;
-          for(int i = 0; i < x_points.size(); i++){
-            double dist = pow(pow(x_points[i] - x_position,2) + pow(y_points[i]-y_position,2),0.5);
-            if(dist <=  min_dist){
-              min_dist = dist;
-              closest_id = i;
-            }
+          double min_dist = numeric_limits<double>::max();
+          for (size_t i = 0; i < x_points.size(); i++) {
+              double dist = hypot(x_points[i] - x_position, y_points[i] - y_position);
+              if (dist <= min_dist) {
+                  min_dist = dist;
+                  closest_id = i;
+              }
           }
-          //Based on the closest found position of the ego car, an angle is found from the current position to the closest waypoint
-          int prev_id = 0;
-          if(closest_id > 0){
-            prev_id = closest_id-1;
-         
-          } else if(closest_id == 0) {
-            int temp_id  = closest_id+1;
-            prev_id = closest_id;
-            closest_id = temp_id;
-          }
-          //error_steer = yaw - angle_between_points(x_points[prev_id], y_points[prev_id], x_points[closest_id], y_points[closest_id]);
-          error_steer = yaw - angle_between_points(x_position, y_position, x_points[closest_id], y_points[closest_id]);
-          /**
-          * TODO (step 3): uncomment these lines
-          **/
-//           // Compute control to apply
-           pid_steer.UpdateError(error_steer);
-           steer_output = pid_steer.TotalError();
 
-//           // Save data
-           file_steer.seekg(std::ios::beg);
-           for(int j=0; j < i - 1; ++j) {
-               file_steer.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-           }
-           file_steer  << i ;
-           file_steer  << " " << error_steer;
-           file_steer  << " " << steer_output << endl;
-          
-           for(int itr = 0; itr < y_points.size(); itr++){
-             std::cout  << " " << y_points[itr] << " ";
-           }
-           std::cout << " SIZE OF X: " << y_points.size() << std::endl;
+          int prev_id = (closest_id > 0) ? closest_id - 1 : closest_id;
+          if (closest_id == 0) {
+              closest_id++;
+          }
+
+          error_steer = yaw - angle_between_points(x_position, y_position, x_points[closest_id], y_points[closest_id]);
+          pid_steer.UpdateError(error_steer);
+          steer_output = pid_steer.TotalError();
+
+          // Save data
+          file_steer.seekg(ios::beg);
+          for (int j = 0; j < i - 1; ++j) {
+              file_steer.ignore(numeric_limits<streamsize>::max(), '\n');
+          }
+          file_steer << i << " " << error_steer << " " << steer_output << endl;
 
           ////////////////////////////////////////
           // Throttle control
           ////////////////////////////////////////
-
-          /**
-          * TODO (step 2): uncomment these lines
-          **/
-//           // Update the delta time with the previous command
-           pid_throttle.UpdateDeltaTime(new_delta_time);
-
-          // Compute error of speed
+          pid_throttle.UpdateDeltaTime(new_delta_time);
           double error_throttle;
-          /**
-          * TODO (step 2): compute the throttle error (error_throttle) from the position and the desired speed
-          **/
-          // modify the following line for step 2
-          //error_throttle = v_points.back() - velocity;
-			    //error_throttle = velocity - (std::accumulate(v_points.begin(), v_points.end(), 0.0) / v_points.size());
-          
-          //based on closest x and y waypoint, the corresponding velocity is used for error calculation
-          error_throttle = velocity - (v_points[closest_id]);
 
+          // Compute the throttle error from the position and the desired speed
+          error_throttle = velocity - v_points[closest_id];
           double throttle_output;
           double brake_output;
 
-          /**
-          * TODO (step 2): uncomment these lines
-          **/
-//           // Compute control to apply
-           pid_throttle.UpdateError(error_throttle);
-           double throttle = pid_throttle.TotalError();
+          pid_throttle.UpdateError(error_throttle);
+          double throttle = pid_throttle.TotalError();
 
-//           // Adapt the negative throttle to break
-           if (throttle > 0.0) {
-             throttle_output = throttle;
-             brake_output = 0;
-           } else {
-             throttle_output = 0;
-             brake_output = -throttle;
-           }
+          // Adapt the negative throttle to brake
+          if (throttle > 0.0) {
+              throttle_output = throttle;
+              brake_output = 0;
+          } else {
+              throttle_output = 0;
+              brake_output = -throttle;
+          }
 
-//           // Save data
-           file_throttle.seekg(std::ios::beg);
-           for(int j=0; j < i - 1; ++j){
-               file_throttle.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
-           }
-           file_throttle  << i ;
-           file_throttle  << " " << error_throttle;
-           file_throttle  << " " << brake_output;
-           file_throttle  << " " << throttle_output << endl;
+          // Save data
+          file_throttle.seekg(std::ios::beg);
+          for(int j=0; j < i - 1; ++j){
+              file_throttle.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+          }
+          file_throttle  << i ;
+          file_throttle  << " " << error_throttle;
+          file_throttle  << " " << brake_output;
+          file_throttle  << " " << throttle_output << endl;
 
-            // Send control
-            json msgJson;
-            msgJson["brake"] = brake_output;
-            msgJson["throttle"] = throttle_output;
-            msgJson["steer"] = steer_output;
+          // Send control
+          json msgJson;
+          msgJson["brake"] = brake_output;
+          msgJson["throttle"] = throttle_output;
+          msgJson["steer"] = steer_output;
 
-            msgJson["trajectory_x"] = x_points;
-            msgJson["trajectory_y"] = y_points;
-            msgJson["trajectory_v"] = v_points;
-            msgJson["spirals_x"] = spirals_x;
-            msgJson["spirals_y"] = spirals_y;
-            msgJson["spirals_v"] = spirals_v;
-            msgJson["spiral_idx"] = best_spirals;
-            msgJson["active_maneuver"] = behavior_planner.get_active_maneuver();
+          msgJson["trajectory_x"] = x_points;
+          msgJson["trajectory_y"] = y_points;
+          msgJson["trajectory_v"] = v_points;
+          msgJson["spirals_x"] = spirals_x;
+          msgJson["spirals_y"] = spirals_y;
+          msgJson["spirals_v"] = spirals_v;
+          msgJson["spiral_idx"] = best_spirals;
+          msgJson["active_maneuver"] = behavior_planner.get_active_maneuver();
 
-            // min point threshold before doing the update
-            // for high update rate use 19 for slow update rate use 4
-            msgJson["update_point_thresh"] = 16;
+          // min point threshold before doing the update
+          // for high update rate use 19 for slow update rate use 4
+          msgJson["update_point_thresh"] = 16;
 
-            auto msg = msgJson.dump();
+          auto msg = msgJson.dump();
 
-            i = i + 1;
-            file_steer.close();
-            file_throttle.close();
+          i = i + 1;
+          file_steer.close();
+          file_throttle.close();
 
-            ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
     });
 
