@@ -195,38 +195,41 @@ void set_obst(vector<double> x_points, vector<double> y_points, vector<State>& o
 	obst_flag = true;
 }
 
-double computeSteerError(double x_position, double y_position, double yaw, const vector<double>& x_points, const vector<double>& y_points) {
-    // Berechne den Querfehler (CTE) basierend auf der aktuellen Position und der gewünschten Trajektorie
-    // Hier verwenden wir die erste Zielposition als Referenz
-    double target_x = x_points[0];
-    double target_y = y_points[0];
+int main ()
+{
+  cout << "starting server" << endl;
+  uWS::Hub h;
 
-    // Berechne den Fehler als Abstand zur Zielposition
-    double dx = target_x - x_position;
-    double dy = target_y - y_position;
+  double new_delta_time;
+  int i = 0;
 
-    // Berechne den Querfehler (CTE)
-    double error_steer = dy * cos(yaw) - dx * sin(yaw);
+  fstream file_steer;
+  file_steer.open("steer_pid_data.txt", std::ofstream::out | std::ofstream::trunc);
+  file_steer.close();
+  fstream file_throttle;
+  file_throttle.open("throttle_pid_data.txt", std::ofstream::out | std::ofstream::trunc);
+  file_throttle.close();
 
-    return error_steer;
-}
+  time_t prev_timer;
+  time_t timer;
+  time(&prev_timer);
 
-double computeThrottleError(double velocity, const vector<double>& v_points) {
-    // Verwende die erste Zielgeschwindigkeit als Referenz
-    double target_velocity = v_points[0];
+  // initialize pid steer
+  /**
+  * TODO (Step 1): create pid (pid_steer) for steer command and initialize values
+  **/
 
-    // Berechne den Geschwindigkeitsfehler
-    double error_throttle = target_velocity - velocity;
 
-    return error_throttle;
-}
+  // initialize pid throttle
+  /**
+  * TODO (Step 1): create pid (pid_throttle) for throttle command and initialize values
+  **/
 
-int main() {
-    cout << "starting server" << endl;
-    uWS::Hub h;
+  PID pid_steer = PID();
+  pid_steer.Init(0.1, 0.001, 0.1, 1.2, -1.2); // Example values, tune these
 
-    double new_delta_time;
-    int i = 0;
+  PID pid_throttle = PID();
+  pid_throttle.Init(0.2, 0.001, 0.1, 1.0, -1.0); // Example values, tune these
 
     fstream file_steer;
     file_steer.open("steer_pid_data.txt", std::ofstream::out | std::ofstream::trunc);
