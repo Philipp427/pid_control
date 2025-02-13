@@ -24,21 +24,27 @@ void PID::Init(double Kpi, double Kii, double Kdi, double output_lim_maxi, doubl
     Kd = Kdi;
     output_lim_max = output_lim_maxi;
     output_lim_min = output_lim_mini;
-    prev_cte = 0.0;
-    int_cte = 0.0;
+
+    p_error = 0.0;
+    d_error = 0.0;
+    i_error = 0.0;
+
+    delta_time = 0.0;
 }
 
 void PID::UpdateError(double cte) {
-    double diff_cte = cte - prev_cte;
-    prev_cte = cte;
-    int_cte += cte;
-    p_error = Kp * cte;
-    i_error = Ki * int_cte;
-    d_error = Kd * diff_cte;
+    if (delta_time > 0.0) {
+        d_error = (cte- p_error) / delta_time;
+    } else {
+        d_error = 0.0;
+    }
+
+    p_error = cte;
+    cte_i += cte * delta_time;
 }
 
 double PID::TotalError() {
-    double control = p_error + i_error + d_error;
+    double control = Kp * p_error + Ki * i_error + Kd * d_error;
     if (control > output_lim_max) {
         control = output_lim_max;
     } else if (control < output_lim_min) {
@@ -49,5 +55,4 @@ double PID::TotalError() {
 
 double PID::UpdateDeltaTime(double new_delta_time) {
     delta_time = new_delta_time;
-    return delta_time;
 }

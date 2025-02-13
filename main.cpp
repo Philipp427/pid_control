@@ -216,7 +216,7 @@ int main ()
 
     // Initialize PID controllers
     PID pid_steer;
-    pid_steer.Init(0.29, 0.0011, 0.79, 1.2, -1.2);
+    pid_steer.Init(0.5, 0.005, 0.3, 1.2, -1.2);
 
     PID pid_throttle;
     pid_throttle.Init(0.21, 0.001, 0.019, 1.0, -1.0);
@@ -319,6 +319,7 @@ int main ()
 
           // Compute error of speed
           double error_throttle;
+          double desired_speed = v_points.back();
           error_throttle = desired_speed - velocity;
 
           double throttle_output;
