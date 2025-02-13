@@ -297,10 +297,15 @@ int main ()
               closest_id++;
           }
           error_steer = angle_between_points(x_position, y_position, x_points[closest_id], y_points[closest_id]) - yaw;
+          std::cout << "Position values: x_position: " << x_position << "y_position: " << y_position << "x_position_closest: " << x_points[closest_id] << "y_position_closest: " << y_points[closest_id] << std::endl;
+          std::cout << "angle between: " << angle_between_points(x_position, y_position, x_points[closest_id], y_points[closest_id]) << std::endl;
+          std::cout << "Yaw: " << yaw << std::endl;
+          std::cout << "Error Steering: " << error_steer << std::endl;
 
           // Compute control to apply
           pid_steer.UpdateError(error_steer);
           steer_output = pid_steer.TotalError();
+          std::cout << "Steering Output: " << steer_output << std::endl;
 
           // Save data
           file_steer.seekg(std::ios::beg);
