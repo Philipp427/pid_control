@@ -12,7 +12,7 @@
 using namespace std;
 
 // Constructor to initialize PID errors and coefficients
-PID::PID() : p_error(0), i_error(0), d_error(0), Kp(0), Ki(0), Kd(0), output_lim_max(0), output_lim_min(0), delta_time(0) {}
+PID::PID() {}
 
 // Destructor
 PID::~PID() {}
@@ -20,40 +20,34 @@ PID::~PID() {}
 // Initialize PID coefficients and output limits
 void PID::Init(double Kpi, double Kii, double Kdi, double output_lim_maxi, double output_lim_mini) {
     Kp = Kpi;
-    Kd = Kdi;
     Ki = Kii;
-    output_limit_max = output_lim_maxi;
-    output_limit_min = output_lim_mini;
+    Kd = Kdi;
+    output_lim_max = output_lim_maxi;
+    output_lim_min = output_lim_mini;
+    prev_cte = 0.0;
+    int_cte = 0.0;
 }
 
-// Update PID errors based on cross-track error (cte)
 void PID::UpdateError(double cte) {
-    if (prev_err == NULL) {
-        prev_err = cte;
-    } else {
-        prev_err = err;
-    }
-    err = cte;
-    sum_err += (cte * delta_time);
+    double diff_cte = cte - prev_cte;
+    prev_cte = cte;
+    int_cte += cte;
+    p_error = Kp * cte;
+    i_error = Ki * int_cte;
+    d_error = Kd * diff_cte;
 }
 
-// Calculate and return the total error
 double PID::TotalError() {
-    double control;
-    if (delta_time > 0.0) {
-        control = (err * -1.0 * Kp) + (((err - prev_err) / delta_time) * -1.0 * Kd) + (-1.0 * Ki * sum_err);
-    } else {
-        control = (err * -1.0 * Kp) + (-1.0 * Ki * sum_err);
-    }
-    if (control < output_limit_min && control < output_limit_max) {
-        return output_limit_min;
-    } else if (control > output_limit_max && control > output_limit_min) {
-        return output_limit_max;
+    double control = p_error + i_error + d_error;
+    if (control > output_lim_max) {
+        control = output_lim_max;
+    } else if (control < output_lim_min) {
+        control = output_lim_min;
     }
     return control;
 }
 
-// Update the delta time with new value
 double PID::UpdateDeltaTime(double new_delta_time) {
     delta_time = new_delta_time;
+    return delta_time;
 }
