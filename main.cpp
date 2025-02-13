@@ -296,7 +296,7 @@ int main ()
           if (closest_id == 0) {
               closest_id++;
           }
-          error_steer = yaw - angle_between_points(x_position, y_position, x_points[closest_id], y_points[closest_id]);
+          error_steer = angle_between_points(x_position, y_position, x_points[closest_id], y_points[closest_id]) - yaw;
 
           // Compute control to apply
           pid_steer.UpdateError(error_steer);
@@ -319,8 +319,7 @@ int main ()
 
           // Compute error of speed
           double error_throttle;
-          double desired_speed = v_points.back();
-          error_throttle = desired_speed - velocity;
+          error_throttle = v_points.back() - velocity;
 
           double throttle_output;
           double brake_output;
